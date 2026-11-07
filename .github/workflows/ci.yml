@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff
+        run: ruff check disk_inspector.py
+
+  smoke-test:
+    name: Smoke test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build test directory tree (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p test_root/level1_a/big_dir test_root/level1_a/small_dir \
+                   test_root/level1_b/medium_dir
+          dd if=/dev/zero of=test_root/level1_a/big_dir/big.bin bs=1M count=20
+          dd if=/dev/zero of=test_root/level1_b/medium_dir/mid.bin bs=1M count=10
+          dd if=/dev/zero of=test_root/level1_a/small_dir/small.bin bs=1M count=2
+
+      - name: Build test directory tree (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir test_root\level1_a\big_dir test_root\level1_a\small_dir test_root\level1_b\medium_dir
+          fsutil file createnew test_root\level1_a\big_dir\big.bin 20971520
+          fsutil file createnew test_root\level1_b\medium_dir\mid.bin 10485760
+          fsutil file createnew test_root\level1_a\small_dir\small.bin 2097152
+
+      - name: Run analyzer and verify output
+        shell: bash
+        run: |
+          python disk_inspector.py test_root -n 5 | tee output.txt
+          grep -q "2-го уровня" output.txt
+          grep -q "3-го уровня" output.txt
+          # Самый большой каталог 2-го уровня должен быть первым в топе
+          head -20 output.txt | grep -q "big_dir"
+          echo "Smoke test passed"
