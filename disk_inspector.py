@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Disk Inspector — анализ занятого места на диске.
 

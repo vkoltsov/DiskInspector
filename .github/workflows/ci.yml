@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  PYTHONUTF8: "1"
+
 jobs:
   lint:
     name: Lint (ruff)
@@ -50,7 +53,9 @@ jobs:
       - name: Build test directory tree (Windows)
         if: runner.os == 'Windows'
         run: |
-          mkdir test_root\level1_a\big_dir test_root\level1_a\small_dir test_root\level1_b\medium_dir
+          mkdir test_root\level1_a\big_dir
+          mkdir test_root\level1_a\small_dir
+          mkdir test_root\level1_b\medium_dir
           fsutil file createnew test_root\level1_a\big_dir\big.bin 20971520
           fsutil file createnew test_root\level1_b\medium_dir\mid.bin 10485760
           fsutil file createnew test_root\level1_a\small_dir\small.bin 2097152
